@@ -122,14 +122,16 @@ class QuizGenerator:
         Note: This method relies on `generate_question_with_vectorstore` for question generation and `validate_question` for ensuring question uniqueness. Ensure `question_bank` is properly initialized and managed.
         """
         self.question_bank = [] # Reset the question bank
+        retry_limit = 3  # Set a limit for retries if a question is not unique
 
         for _ in range(self.num_questions):
             ##### YOUR CODE HERE #####
-            question_str = # Use class method to generate question
+            question_str = self.generate_question_with_vectorstore() # Use class method to generate question
             
             ##### YOUR CODE HERE #####
             try:
                 # Convert the JSON String to a dictionary
+                question = json.loads(question_str)
             except json.JSONDecodeError:
                 print("Failed to decode question JSON.")
                 continue  # Skip this iteration if JSON decoding fails
@@ -140,8 +142,23 @@ class QuizGenerator:
             if self.validate_question(question):
                 print("Successfully generated unique question")
                 # Add the valid and unique question to the bank
+                self.question_bank.append(question)
             else:
                 print("Duplicate or invalid question detected.")
+                retry_count = 0
+                while retry_count < retry_limit:
+                    # Attempt to generate a new question
+                    question_str = self.generate_question_with_vectorstore
+                    try:
+                        question = json.loads(question_str)
+                    except json.JSONDecodeError:
+                        print("Failed to decode question JSON.")
+                        break
+                    if self.validate_question(question):
+                        print("Successfully generated unique question")
+                        self.question_bank.append(question)
+                        break
+                    retry_count += 1
             ##### YOUR CODE HERE #####
 
         return self.question_bank
@@ -169,6 +186,13 @@ class QuizGenerator:
         ##### YOUR CODE HERE #####
         # Consider missing 'question' key as invalid in the dict object
         # Check if a question with the same text already exists in the self.question_bank
+        if question.get("question") is None:
+            return False
+        is_unique = True
+        for q in self.question_bank:
+            if q.get("question") == question.get("question"):
+                is_unique = False
+                break
         ##### YOUR CODE HERE #####
         return is_unique
 
@@ -178,7 +202,7 @@ if __name__ == "__main__":
     
     embed_config = {
         "model_name": "textembedding-gecko@003",
-        "project": "YOUR-PROJECT-ID-HERE",
+        "project": "gemini-quizify-426423",
         "location": "us-central1"
     }
     
@@ -209,7 +233,7 @@ if __name__ == "__main__":
                 st.write(topic_input)
                 
                 # Test the Quiz Generator
-                generator = QuizGenerator(topic_input, questions, chroma_creator)
+                generator = QuizGenerator(topic_input, questions, chroma_creator.db)
                 question_bank = generator.generate_quiz()
                 question = question_bank[0]
 
